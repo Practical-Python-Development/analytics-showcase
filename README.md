@@ -13,5 +13,5 @@ pip install -r requirements.txt   # requirements.txt contains: pygame
 ## Usage
 ```bash
 python src/pv_forecast_analysis/data.py
-
+jupyter notebook src/pv_forecast_analysis/analysis.ipynb
 ```
