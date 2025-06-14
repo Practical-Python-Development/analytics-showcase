@@ -27,6 +27,21 @@ TIMESTAMP_FORMAT = '%d.%m.%Y %H:%M'
 LOCAL_TZ = pytz.timezone('Europe/Berlin')
 
 
+def _load_timeseries_file(timeseries_file_path: Path) -> pd.DataFrame:
+    """
+    Load timeseries file and transform accordingly.
+
+    :param timeseries_file_path: path
+    :return:
+    """
+    timeseries = pd.read_csv(timeseries_file_path)
+    timeseries[COL_TIMESTAMP] = (
+        pd.to_datetime(timeseries[COL_TIMESTAMP], format=TIMESTAMP_FORMAT)
+        .dt.tz_localize(LOCAL_TZ, ambiguous='infer')
+    )
+    timeseries = timeseries.set_index(COL_TIMESTAMP)
+    return timeseries
+
 def load_pv_forecast(date: dt.date) -> pd.DataFrame:
     """
     Load PV forecasts.
@@ -34,24 +49,24 @@ def load_pv_forecast(date: dt.date) -> pd.DataFrame:
     :param date: of forecast
     :return: forecast from `date`
     """
-    forecast = pd.read_csv(DATA_PATH / FORECAST_FILE_TEMPLATE.format(date=date.strftime(FORECAST_FILE_DATE_FORMAT)))
-    forecast[COL_TIMESTAMP] = (
-        pd.to_datetime(forecast[COL_TIMESTAMP], format=TIMESTAMP_FORMAT)
-        .dt.tz_localize(LOCAL_TZ, ambiguous='infer')
-    )
-    forecast[forecast] = forecast.set_index(COL_TIMESTAMP)
-    return forecast
+    forecast_file_path = DATA_PATH / FORECAST_FILE_TEMPLATE.format(date=date.strftime(FORECAST_FILE_DATE_FORMAT))
+    return _load_timeseries_file(forecast_file_path)
 
+def load_best_forecasts() -> pd.DataFrame:
+    """Get best forecast for timestamp."""
+    forecast_files = DATA_PATH.glob(FORECAST_FILE_TEMPLATE.format(date='*'))
+
+    best_forecast = pd.DataFrame()
+    for forecast_file in forecast_files:
+        next_forecast = _load_timeseries_file(forecast_file)
+        best_forecast = pd.concat([best_forecast, next_forecast[~next_forecast.index.isin(best_forecast.index)]])
+        best_forecast.update(next_forecast)
+
+    return best_forecast
 
 def load_measurement() -> pd.DataFrame:
     """Load PV measurements."""
-    measurements = pd.read_csv(DATA_PATH / MEASUREMENT_FILE)
-    measurements[COL_TIMESTAMP] = (
-        pd.to_datetime(measurements[COL_TIMESTAMP], format=TIMESTAMP_FORMAT)
-        .dt.tz_localize(LOCAL_TZ, ambiguous='infer')
-    )
-    measurements[forecast] = measurements.set_index(COL_TIMESTAMP)
-    return measurements
+    return _load_timeseries_file(DATA_PATH / MEASUREMENT_FILE)
 
 
 def load_master_data() -> pd.DataFrame:
@@ -155,4 +170,5 @@ if __name__ == '__main__':
     master_data = load_master_data()
     measurements = load_measurement()
     forecast = load_pv_forecast(dt.date(2024, 10, 26))
-    print(forecast)
+    best = load_best_forecasts()
+    print(best)
