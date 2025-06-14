@@ -1,0 +1,5 @@
+matplotlib==3.10.3
+numpy==2.3.0
+pandas==2.3.0
+pytz==2025.2
+seaborn==0.13.2
