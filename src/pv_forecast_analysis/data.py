@@ -10,6 +10,7 @@ import numpy as np
 import random
 from datetime import datetime, timedelta
 
+FORECAST_FILE_DATE_FORMAT = '%Y%m%d'
 
 DATA_PATH = Path(__file__).parent.parent.parent / 'data'
 
@@ -24,6 +25,38 @@ COL_TIMESTAMP = 'timestamp'
 
 TIMESTAMP_FORMAT = '%d.%m.%Y %H:%M'
 LOCAL_TZ = pytz.timezone('Europe/Berlin')
+
+
+def load_pv_forecast(date: dt.date) -> pd.DataFrame:
+    """
+    Load PV forecasts.
+
+    :param date: of forecast
+    :return: forecast from `date`
+    """
+    forecast = pd.read_csv(DATA_PATH / FORECAST_FILE_TEMPLATE.format(date=date.strftime(FORECAST_FILE_DATE_FORMAT)))
+    forecast[COL_TIMESTAMP] = (
+        pd.to_datetime(forecast[COL_TIMESTAMP], format=TIMESTAMP_FORMAT)
+        .dt.tz_localize(LOCAL_TZ, ambiguous='infer')
+    )
+    forecast[forecast] = forecast.set_index(COL_TIMESTAMP)
+    return forecast
+
+
+def load_measurement() -> pd.DataFrame:
+    """Load PV measurements."""
+    measurements = pd.read_csv(DATA_PATH / MEASUREMENT_FILE)
+    measurements[COL_TIMESTAMP] = (
+        pd.to_datetime(measurements[COL_TIMESTAMP], format=TIMESTAMP_FORMAT)
+        .dt.tz_localize(LOCAL_TZ, ambiguous='infer')
+    )
+    measurements[forecast] = measurements.set_index(COL_TIMESTAMP)
+    return measurements
+
+
+def load_master_data() -> pd.DataFrame:
+    """Load plant master data."""
+    return pd.read_csv(DATA_PATH / MASTER_DATA_FILE)
 
 
 def _generate_error(length: int):
@@ -114,8 +147,12 @@ def _generate_data() -> None:
         export_forecast_data = forecast_data.copy(deep=True)
         export_forecast_data = export_forecast_data.set_index(export_forecast_data.index.strftime(TIMESTAMP_FORMAT))
         export_forecast_data.index.name = COL_TIMESTAMP
-        export_forecast_data.round(3).to_csv(DATA_PATH / FORECAST_FILE_TEMPLATE.format(date=start.strftime('%Y%m%d')))
+        file_name = FORECAST_FILE_TEMPLATE.format(date=start.strftime(FORECAST_FILE_DATE_FORMAT))
+        export_forecast_data.round(3).to_csv(DATA_PATH / file_name)
 
 
 if __name__ == '__main__':
-    _generate_data()
+    master_data = load_master_data()
+    measurements = load_measurement()
+    forecast = load_pv_forecast(dt.date(2024, 10, 26))
+    print(forecast)
