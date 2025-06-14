@@ -42,7 +42,7 @@ def _load_timeseries_file(timeseries_file_path: Path) -> pd.DataFrame:
     timeseries = timeseries.set_index(COL_TIMESTAMP)
     return timeseries
 
-def load_pv_forecast(date: dt.date) -> pd.DataFrame:
+def load_forecast(date: dt.date) -> pd.DataFrame:
     """
     Load PV forecasts.
 
@@ -98,6 +98,8 @@ def _solar_generation(hour, minute, capacity):
 
 def _generate_data() -> None:
     """Generate master data, measurements and forecast files."""
+    DATA_PATH.mkdir(parents=True, exist_ok=True)
+
     # Set seed for reproducibility
     np.random.seed(42)
     # Parameters
@@ -110,8 +112,8 @@ def _generate_data() -> None:
     tsos = ['TSO_A', 'TSO_B', 'TSO_C', 'TSO_D']
 
     # Generate master data file
-    plants = [f'Plant_{i}' for i in range(1, num_plants + 1)]
-    capacities = [random.uniform(*capacity_range) for _ in range(num_plants)]
+    plants = [f'Plant_{i:02d}' for i in range(1, num_plants + 1)]
+    capacities = [round(random.uniform(*capacity_range), 1) for _ in range(num_plants)]
     plant_tso = [random.choice(tsos) for _ in range(num_plants)]
     master_data = pd.DataFrame({COL_PLANT: plants, COL_CAPACITY: capacities, COL_TSO: plant_tso})
     master_data.to_csv(DATA_PATH / MASTER_DATA_FILE, index=False)
@@ -167,8 +169,4 @@ def _generate_data() -> None:
 
 
 if __name__ == '__main__':
-    master_data = load_master_data()
-    measurements = load_measurement()
-    forecast = load_pv_forecast(dt.date(2024, 10, 26))
-    best = load_best_forecasts()
-    print(best)
+    _generate_data()
