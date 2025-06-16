@@ -169,4 +169,9 @@ def _generate_data() -> None:
 
 
 if __name__ == '__main__':
-    _generate_data()
+    # _generate_data()
+    df = load_master_data()
+    df = load_measurement()
+    df = load_forecast(dt.date(2024, 10, 26))
+    df = load_best_forecasts()
+    print(df)
