@@ -99,7 +99,7 @@ def _generate_error(length: int):
     return smooth_error
 
 
-def _solar_generation(hour, minute, capacity):
+def _solar_generation(hour: int, minute: int, capacity: float) -> float:
     """Simulates solar power output based on the hour of the day."""
     qh = hour * 4 + minute // 15
     peak_factor = np.sin((qh - 24) / 48 * np.pi)  # Peak around noon (hour 12)
@@ -188,7 +188,7 @@ def _generate_data() -> None:
         export_forecast_data.round(3).to_csv(DATA_PATH / file_name)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     _generate_data()
     # df = load_master_data()
     # df = load_measurement()
