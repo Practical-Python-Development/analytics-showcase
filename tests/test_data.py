@@ -62,8 +62,8 @@ def test_solar_generation_with_parameter_set(
     assert result == round(_solar_generation(hour, minute, capacity), 2)
 
 
-def test_load_forecast(mock_data):
+def test_load_forecast(mock_data, forecast_reference):
     """Test loading timeseries file with example file."""
     result = load_forecast(dt.date(2024, 10, 27))
     # the pd.read_csv function does not recognize the frequency automatically
-    assert_frame_equal(result, _REFERENCE, check_freq=False)
+    assert_frame_equal(result, forecast_reference, check_freq=False)
