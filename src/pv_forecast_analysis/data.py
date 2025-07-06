@@ -1,4 +1,5 @@
 """Dataset interactions."""
+
 from pathlib import Path
 
 import datetime as dt
@@ -10,21 +11,21 @@ import numpy as np
 import random
 from datetime import datetime, timedelta
 
-FORECAST_FILE_DATE_FORMAT = '%Y%m%d'
+FORECAST_FILE_DATE_FORMAT = "%Y%m%d"
 
-DATA_PATH = Path(__file__).parent.parent.parent / 'data'
+DATA_PATH = Path(__file__).parent.parent.parent / "data"
 
-MASTER_DATA_FILE = 'solar_plants_master_data.csv'
-MEASUREMENT_FILE = 'solar_actual_measurements.csv'
-FORECAST_FILE_TEMPLATE = 'solar_forecasts_{date}.csv'
+MASTER_DATA_FILE = "solar_plants_master_data.csv"
+MEASUREMENT_FILE = "solar_actual_measurements.csv"
+FORECAST_FILE_TEMPLATE = "solar_forecasts_{date}.csv"
 
-COL_TSO = 'TSO'
-COL_CAPACITY = 'Capacity_MW'
-COL_PLANT = 'Plant'
-COL_TIMESTAMP = 'timestamp'
+COL_TSO = "TSO"
+COL_CAPACITY = "Capacity_MW"
+COL_PLANT = "Plant"
+COL_TIMESTAMP = "timestamp"
 
-TIMESTAMP_FORMAT = '%d.%m.%Y %H:%M'
-LOCAL_TZ = pytz.timezone('Europe/Berlin')
+TIMESTAMP_FORMAT = "%d.%m.%Y %H:%M"
+LOCAL_TZ = pytz.timezone("Europe/Berlin")
 
 
 def _load_timeseries_file(timeseries_file_path: Path) -> pd.DataFrame:
@@ -35,12 +36,12 @@ def _load_timeseries_file(timeseries_file_path: Path) -> pd.DataFrame:
     :return:
     """
     timeseries = pd.read_csv(timeseries_file_path)
-    timeseries[COL_TIMESTAMP] = (
-        pd.to_datetime(timeseries[COL_TIMESTAMP], format=TIMESTAMP_FORMAT)
-        .dt.tz_localize(LOCAL_TZ, ambiguous='infer')
-    )
+    timeseries[COL_TIMESTAMP] = pd.to_datetime(
+        timeseries[COL_TIMESTAMP], format=TIMESTAMP_FORMAT
+    ).dt.tz_localize(LOCAL_TZ, ambiguous="infer")
     timeseries = timeseries.set_index(COL_TIMESTAMP)
     return timeseries
+
 
 def load_forecast(date: dt.date) -> pd.DataFrame:
     """
@@ -49,20 +50,29 @@ def load_forecast(date: dt.date) -> pd.DataFrame:
     :param date: of forecast
     :return: forecast from `date`
     """
-    forecast_file_path = DATA_PATH / FORECAST_FILE_TEMPLATE.format(date=date.strftime(FORECAST_FILE_DATE_FORMAT))
+    forecast_file_path = DATA_PATH / FORECAST_FILE_TEMPLATE.format(
+        date=date.strftime(FORECAST_FILE_DATE_FORMAT)
+    )
     return _load_timeseries_file(forecast_file_path)
+
 
 def load_best_forecasts() -> pd.DataFrame:
     """Get best forecast for timestamp."""
-    forecast_files = DATA_PATH.glob(FORECAST_FILE_TEMPLATE.format(date='*'))
+    forecast_files = DATA_PATH.glob(FORECAST_FILE_TEMPLATE.format(date="*"))
 
     best_forecast = pd.DataFrame()
     for forecast_file in forecast_files:
         next_forecast = _load_timeseries_file(forecast_file)
-        best_forecast = pd.concat([best_forecast, next_forecast[~next_forecast.index.isin(best_forecast.index)]])
+        best_forecast = pd.concat(
+            [
+                best_forecast,
+                next_forecast[~next_forecast.index.isin(best_forecast.index)],
+            ]
+        )
         best_forecast.update(next_forecast)
 
     return best_forecast
+
 
 def load_measurement() -> pd.DataFrame:
     """Load PV measurements."""
@@ -93,7 +103,9 @@ def _solar_generation(hour, minute, capacity):
     """Simulates solar power output based on the hour of the day."""
     qh = hour * 4 + minute // 15
     peak_factor = np.sin((qh - 24) / 48 * np.pi)  # Peak around noon (hour 12)
-    return max(0, capacity * peak_factor * np.random.uniform(0.8, 1.2))  # Add variability
+    return max(
+        0, capacity * peak_factor * np.random.uniform(0.8, 1.2)
+    )  # Add variability
 
 
 def _generate_data() -> None:
@@ -109,43 +121,47 @@ def _generate_data() -> None:
     end_time = start_time + timedelta(days=8)
     freq_minutes = 15
     forecast_days = 5
-    tsos = ['TSO_A', 'TSO_B', 'TSO_C', 'TSO_D']
+    tsos = ["TSO_A", "TSO_B", "TSO_C", "TSO_D"]
 
     # Generate master data file
-    plants = [f'Plant_{i:02d}' for i in range(1, num_plants + 1)]
+    plants = [f"Plant_{i:02d}" for i in range(1, num_plants + 1)]
     capacities = [round(random.uniform(*capacity_range), 1) for _ in range(num_plants)]
     plant_tso = [random.choice(tsos) for _ in range(num_plants)]
-    master_data = pd.DataFrame({COL_PLANT: plants, COL_CAPACITY: capacities, COL_TSO: plant_tso})
+    master_data = pd.DataFrame(
+        {COL_PLANT: plants, COL_CAPACITY: capacities, COL_TSO: plant_tso}
+    )
     master_data.to_csv(DATA_PATH / MASTER_DATA_FILE, index=False)
 
     # Generate actual measurements with DST handling
     timestamps = pd.date_range(
         start=start_time,
         end=end_time,
-        freq=f'{freq_minutes}min',
-        inclusive='left',
+        freq=f"{freq_minutes}min",
+        inclusive="left",
     )
 
     actual_data = []
     for plant, capacity in zip(plants, capacities):
-        production = [_solar_generation(ts.hour, ts.minute, capacity) for ts in timestamps]
+        production = [
+            _solar_generation(ts.hour, ts.minute, capacity) for ts in timestamps
+        ]
         actual_data.extend(zip([plant] * len(timestamps), timestamps, production))
 
-    actual_df = pd.DataFrame(actual_data, columns=['Plant', 'Timestamp', 'Actual_MW'])
-    actual_df = actual_df.pivot(index='Timestamp', columns='Plant', values='Actual_MW')
+    actual_df = pd.DataFrame(actual_data, columns=["Plant", "Timestamp", "Actual_MW"])
+    actual_df = actual_df.pivot(index="Timestamp", columns="Plant", values="Actual_MW")
     actual_df.index.name = COL_TIMESTAMP
     actual_df.index += pd.Timedelta(days=8)  # move to dst period
-    actual_df = (
-        pd.concat([actual_df, actual_df.iloc[-4:]])
-        .set_index(
-            pd.date_range(
-                start=min(actual_df.index),
-                freq=f"{freq_minutes}min",
-                periods=len(actual_df)+4)
+    actual_df = pd.concat([actual_df, actual_df.iloc[-4:]]).set_index(
+        pd.date_range(
+            start=min(actual_df.index),
+            freq=f"{freq_minutes}min",
+            periods=len(actual_df) + 4,
         )
     )
     export_actual_df = actual_df.copy(deep=True)
-    export_actual_df = export_actual_df.set_index(export_actual_df.index.strftime(TIMESTAMP_FORMAT))
+    export_actual_df = export_actual_df.set_index(
+        export_actual_df.index.strftime(TIMESTAMP_FORMAT)
+    )
     export_actual_df.index.name = COL_TIMESTAMP
     export_actual_df.round(3).to_csv(DATA_PATH / MEASUREMENT_FILE)
 
@@ -155,18 +171,22 @@ def _generate_data() -> None:
         end = start + timedelta(days=forecast_days)
 
         forecast_data = actual_df[start:end].copy(deep=True)
-        if start + timedelta(days=forecast_days-1) not in forecast_data.index:
+        if start + timedelta(days=forecast_days - 1) not in forecast_data.index:
             break
         for plant in forecast_data.columns:
             error = _generate_error(len(forecast_data))
-            forecast_data[plant] *= (1-error)
+            forecast_data[plant] *= 1 - error
 
         export_forecast_data = forecast_data.copy(deep=True)
-        export_forecast_data = export_forecast_data.set_index(export_forecast_data.index.strftime(TIMESTAMP_FORMAT))
+        export_forecast_data = export_forecast_data.set_index(
+            export_forecast_data.index.strftime(TIMESTAMP_FORMAT)
+        )
         export_forecast_data.index.name = COL_TIMESTAMP
-        file_name = FORECAST_FILE_TEMPLATE.format(date=start.strftime(FORECAST_FILE_DATE_FORMAT))
+        file_name = FORECAST_FILE_TEMPLATE.format(
+            date=start.strftime(FORECAST_FILE_DATE_FORMAT)
+        )
         export_forecast_data.round(3).to_csv(DATA_PATH / file_name)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     _generate_data()
