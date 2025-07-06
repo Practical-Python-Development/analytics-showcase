@@ -188,5 +188,10 @@ def _generate_data() -> None:
         export_forecast_data.round(3).to_csv(DATA_PATH / file_name)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     _generate_data()
+    # df = load_master_data()
+    # df = load_measurement()
+    # df = load_forecast(dt.date(2024, 10, 26))
+    # df = load_best_forecasts()
+    # print(df)
