@@ -13,18 +13,6 @@ from src.pv_forecast_analysis.data import _solar_generation, LOCAL_TZ, load_fore
 
 
 EXAMPLES_PATH = Path(__file__).parent / "examples"
-_DATE_RANGE = pd.date_range(
-    "2024-10-27 23:00",
-    "2024-10-28 23:00",
-    freq="15min",
-    tz=LOCAL_TZ,
-    inclusive="left",
-    name="timestamp",
-)
-_REFERENCE = pd.DataFrame(
-    {"Plant_01": [1.0] * len(_DATE_RANGE)},
-    index=_DATE_RANGE,
-)
 
 
 @pytest.fixture(scope="module")
@@ -36,6 +24,22 @@ def mock_data() -> Path:
 @pytest.fixture
 def fix_numpy_seed():
     np.random.seed(42)
+
+
+@pytest.fixture
+def forecast_reference() -> pd.DataFrame:
+    _date_range = pd.date_range(
+        "2024-10-27 23:00",
+        "2024-10-28 23:00",
+        freq="15min",
+        tz=LOCAL_TZ,
+        inclusive="left",
+        name="timestamp",
+    )
+    return pd.DataFrame(
+        {"Plant_01": [1.0] * len(_date_range)},
+        index=_date_range,
+    )
 
 
 def test_solar_generation_simple(fix_numpy_seed):
